@@ -1,6 +1,7 @@
 import React from "react";
 import Header from "./Components/Header";
 import Row from "./Components/Row";
+import Banner from "./Components/Banner";
 
 // api key : 74b2bf9516944be552a12407fc7ba128
 
@@ -11,6 +12,7 @@ function App() {
     <>
       <div className="bg-black">
         <Header />
+        <Banner />
         <Row
           Category_title="NETFLIX ORIGINALS"
           url={`https://api.themoviedb.org/3/discover/tv?api_key=`}

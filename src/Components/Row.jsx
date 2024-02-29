@@ -11,7 +11,7 @@ function Row({ Category_title, url, genre, isLargeRow }) {
     try {
       const responce = await axios.get(URL);
       const movies = responce.data.results;
-      console.log(MovieInfo);
+      // console.log(MovieInfo);
       setMovieInfo(movies);
     } catch (error) {
       console.error("bhai Dikkat aari he");
