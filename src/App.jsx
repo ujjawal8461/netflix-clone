@@ -3,10 +3,6 @@ import Header from "./Components/Header";
 import Row from "./Components/Row";
 import Banner from "./Components/Banner";
 
-// api key : 74b2bf9516944be552a12407fc7ba128
-
-// https://api.themoviedb.org/3/movie/popular?api_key=74b2bf9516944be552a12407fc7ba128
-
 function App() {
   return (
     <>

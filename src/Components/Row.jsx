@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import YouTube from "react-youtube";
+import movieTrailer from "movie-trailer";
 
 function Row({ Category_title, url, genre, isLargeRow }) {
   const API_KEY = "74b2bf9516944be552a12407fc7ba128";
@@ -11,7 +13,6 @@ function Row({ Category_title, url, genre, isLargeRow }) {
     try {
       const responce = await axios.get(URL);
       const movies = responce.data.results;
-      // console.log(MovieInfo);
       setMovieInfo(movies);
     } catch (error) {
       console.error("bhai Dikkat aari he");
@@ -21,6 +22,31 @@ function Row({ Category_title, url, genre, isLargeRow }) {
   useEffect(() => {
     getData();
   }, []);
+
+  const [trailerId, settrailerId] = useState("");
+
+  const getVideoID = (movie_name) => {
+    if (trailerId) {
+      settrailerId("");
+    } else {
+      movieTrailer(`${movie_name}`).then((url) => {
+        const videoTrailerId = extractVideoIdFromUrl(url);
+        settrailerId(videoTrailerId);
+      });
+    }
+  };
+  function extractVideoIdFromUrl(url) {
+    const videoIdRegex = /[?&]v=([^&#]*)/;
+    const match = url.match(videoIdRegex);
+    return match ? match[1] : null;
+  }
+  const opts = {
+    height: "390",
+    width: "100%",
+    playerVars: {
+      autoplay: 1,
+    },
+  };
 
   return (
     <>
@@ -35,10 +61,12 @@ function Row({ Category_title, url, genre, isLargeRow }) {
               }`}
               alt={movie.title}
               className="object-cover rounded transition-transform duration-300 hover:scale-90"
+              onClick={() => movie.title && getVideoID(movie.title)}
             />
           ))}
         </div>
       </div>
+      {trailerId && <YouTube videoId={trailerId} opts={opts} />}
     </>
   );
 }
