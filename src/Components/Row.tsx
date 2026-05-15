@@ -45,20 +45,28 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
   useEffect(() => {
     const cache = getPlayableCache();
     
+    // Helper to determine media type
+    const getMediaType = (m: Movie) => m.media_type || (m.title ? "movie" : "tv");
+
     // Always show what we know is verified
-    const verified = movies.filter(m => cache[m.id] === true);
+    const verified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === true);
     setFilteredMovies(verified);
 
-    const unverified = movies.filter(m => cache[m.id] === undefined);
+    const unverified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === undefined);
     
     if (unverified.length > 0 && !verifying) {
       setVerifying(true);
       const verifyBatch = async () => {
         for (const movie of unverified.slice(0, 10)) {
+          const mType = getMediaType(movie);
           try {
-            const res = await axios.get(requests.fetchMovieDetails(movie.id));
+            const fetchUrl = mType === "movie" 
+              ? requests.fetchMovieDetails(movie.id) 
+              : requests.fetchTvDetails(movie.id);
+              
+            const res = await axios.get(fetchUrl);
             const hasVideo = (res.data.videos?.results?.length || 0) > 0;
-            setPlayableCache(movie.id, hasVideo);
+            setPlayableCache(movie.id, mType, hasVideo);
             if (hasVideo) {
               setFilteredMovies(prev => {
                 if (prev.some(m => m.id === movie.id)) return prev;
@@ -66,7 +74,7 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
               });
             }
           } catch (err) {
-            setPlayableCache(movie.id, false);
+            setPlayableCache(movie.id, mType, false);
           }
           await new Promise(resolve => setTimeout(resolve, 150));
         }
@@ -86,7 +94,14 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
     updateMyList(movie);
   };
 
-  if (!moviesList && movies.length === 0) return <RowSkeleton isLargeRow={isLargeRow} />;
+  const isLoading = !moviesList && movies.length === 0;
+  const isVerifyingInitial = !moviesList && filteredMovies.length === 0 && verifying;
+
+  if (isLoading || isVerifyingInitial) return <RowSkeleton isLargeRow={isLargeRow} />;
+  
+  // If we have movies but none are playable and we're done verifying, hide the row
+  if (movies.length > 0 && filteredMovies.length === 0 && !verifying && Category_title !== "My List") return null;
+  // Special case for My List
   if (movies.length === 0 && Category_title === "My List") return null;
 
   return (

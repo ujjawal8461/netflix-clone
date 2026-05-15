@@ -11,22 +11,16 @@ import { Movie } from "../types";
 const Banner: React.FC = () => {
   const navigate = useNavigate();
   const [movie, setMovie] = useState<Movie | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
         const response = await axios.get(requests.fetchNetflixOriginals);
         const data = response.data.results;
-        
-        // Try to find a movie that is likely to have a trailer (usually more popular ones)
-        // or just pick one and we'll fallback in the Watch component
-        const shuffled = [...data].sort(() => 0.5 - Math.random());
-        
-        // We'll just pick the first one from shuffled for now, 
-        // but we could theoretically check its video status if we wanted to be 100% sure.
-        // Given rate limits, we'll stick to random but maybe filter for those with backdrop.
-        const validMovies = shuffled.filter(m => m.backdrop_path && m.overview);
-        setMovie(validMovies[0] || shuffled[0]);
+        const validMovies = data.filter((m: Movie) => m.backdrop_path && m.overview);
+        const randomMovie = validMovies[Math.floor(Math.random() * validMovies.length)];
+        setMovie(randomMovie || data[0]);
       } catch (error) {
         console.error("Error fetching banner data:", error);
       }
@@ -34,7 +28,15 @@ const Banner: React.FC = () => {
     fetchData();
   }, []);
 
-  if (!movie) return <BannerSkeleton />;
+  useEffect(() => {
+    if (movie?.backdrop_path) {
+      const img = new Image();
+      img.src = `https://image.tmdb.org/t/p/original/${movie.backdrop_path}`;
+      img.onload = () => setImageLoaded(true);
+    }
+  }, [movie]);
+
+  if (!movie || !imageLoaded) return <BannerSkeleton />;
 
   return (
     <header
@@ -56,7 +58,7 @@ const Banner: React.FC = () => {
 
         <div className="flex space-x-3 md:space-x-4 mt-6">
           <button 
-            onClick={() => navigate(`/watch/${movie.id}`)}
+            onClick={() => navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`)}
             className="flex items-center justify-center cursor-pointer text-black font-bold rounded px-6 md:px-8 py-2 bg-white hover:bg-opacity-80 transition-all duration-200 text-sm md:text-xl"
           >
             <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">

@@ -72,7 +72,7 @@ const App: React.FC = () => {
                       {searchResults.filter(m => m.poster_path).map((movie) => (
                          <div key={movie.id} className="relative group cursor-pointer transition-transform duration-300 hover:scale-105">
                            <img 
-                            onClick={() => navigate(`/watch/${movie.id}`)}
+                            onClick={() => navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`)}
                             className="rounded-md w-full aspect-[2/3] object-cover"
                             src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
                             alt={movie.title || movie.name} 
@@ -139,7 +139,7 @@ const App: React.FC = () => {
                 )}
               </div>
             } />
-            <Route path="/watch/:id" element={<Watch />} />
+            <Route path="/watch/:type/:id" element={<Watch />} />
             <Route path="/mylist" element={<MyList />} />
             <Route path="/tv" element={<CategoryPage type="tv" title="TV Shows" />} />
             <Route path="/movies" element={<CategoryPage type="movie" title="Movies" />} />

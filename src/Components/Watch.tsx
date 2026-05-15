@@ -10,7 +10,7 @@ import Header from "./Header";
 import { Movie } from "../types";
 
 const Watch: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { type, id } = useParams<{ type: string; id: string }>();
   const navigate = useNavigate();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [trailerUrl, setTrailerUrl] = useState<string | null>("");
@@ -18,15 +18,11 @@ const Watch: React.FC = () => {
   useEffect(() => {
     async function fetchData() {
       try {
-        let movieData;
-        try {
-          const response = await axios.get(requests.fetchMovieDetails(id!));
-          movieData = response.data;
-        } catch (err) {
-          const response = await axios.get(requests.fetchTvDetails(id!));
-          movieData = response.data;
-        }
-        
+        const isTv = type === "tv";
+        const response = await axios.get(
+          isTv ? requests.fetchTvDetails(id!) : requests.fetchMovieDetails(id!)
+        );
+        const movieData = response.data;
         setMovie(movieData);
         
         // 1. Try to find official trailer from TMDB videos
@@ -177,6 +173,7 @@ const Watch: React.FC = () => {
           <h2 className="text-2xl md:text-3xl font-bold mb-8">More Like This</h2>
           <div className="-mx-4 md:-mx-12">
             <Row 
+              key={id}
               Category_title="" 
               fetchUrl={movie.title ? requests.fetchRecommendations(id!) : requests.fetchTvRecommendations(id!)} 
             />

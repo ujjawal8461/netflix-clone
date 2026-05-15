@@ -21,4 +21,5 @@ export interface Movie {
     }[];
   };
   hasVideo?: boolean;
+  media_type?: "movie" | "tv";
 }

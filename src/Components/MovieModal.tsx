@@ -37,7 +37,10 @@ const MovieModal: React.FC<MovieModalProps> = ({ movie, onClose }) => {
             </h2>
             <div className="flex space-x-4">
               <button 
-                onClick={() => navigate(`/watch/${movie.id}`)}
+                onClick={() => {
+                  onClose();
+                  navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`);
+                }}
                 className="bg-white text-black px-8 py-2 rounded font-bold hover:bg-opacity-80 transition-all flex items-center"
               >
                 <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
