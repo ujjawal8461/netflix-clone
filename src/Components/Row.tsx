@@ -7,6 +7,7 @@ import { getPlayableCache, setPlayableCache } from "../utils";
 import requests from "../api/requests";
 import { useAuth } from "../context/AuthContext";
 import MovieModal from "./MovieModal";
+import YouTube from "react-youtube";
 
 const base_url = "https://image.tmdb.org/t/p/w500/";
 
@@ -16,6 +17,127 @@ interface RowProps {
   isLargeRow?: boolean;
   moviesList?: Movie[];
 }
+
+const MovieCard: React.FC<{ 
+  movie: Movie; 
+  isLargeRow?: boolean; 
+  onPlayClick: (movie: Movie) => void;
+  toggleMyList: (e: React.MouseEvent, movie: Movie) => void;
+  isAdded: boolean;
+}> = ({ movie, isLargeRow, onPlayClick, toggleMyList, isAdded }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [shouldPlay, setShouldPlay] = useState(false);
+  const navigate = useNavigate();
+  const cache = getPlayableCache();
+  const mType = movie.media_type || (movie.title ? "movie" : "tv");
+  const videoKey = cache[`${mType}-${movie.id}`];
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (isHovered && typeof videoKey === "string") {
+      timeout = setTimeout(() => setShouldPlay(true), 600);
+    } else {
+      setShouldPlay(false);
+    }
+    return () => clearTimeout(timeout);
+  }, [isHovered, videoKey]);
+
+  const opts = {
+    height: "100%",
+    width: "100%",
+    playerVars: {
+      autoplay: 1,
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      mute: 1,
+    },
+  };
+
+  return (
+    <div 
+      className={`relative flex-shrink-0 transition-all duration-300 z-10 ${
+        isHovered ? "scale-125 z-[60] mx-4" : "scale-100"
+      }`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className={`relative overflow-hidden rounded-md shadow-lg bg-[#181818] transition-all duration-300 ${
+        isHovered ? (isLargeRow ? "w-[240px] md:w-[280px]" : "w-[240px] md:w-[300px]") : (isLargeRow ? "h-[200px] md:h-[250px] w-[140px] md:w-[170px]" : "h-[80px] md:h-[100px] w-[140px] md:w-[180px]")
+      }`}>
+        {/* Top Section: Image or Video */}
+        <div className={`relative w-full overflow-hidden ${isHovered ? "aspect-video" : "h-full"}`}>
+          {shouldPlay && typeof videoKey === "string" ? (
+            <div className="absolute inset-0 w-full h-full pointer-events-none">
+              <YouTube 
+                videoId={videoKey} 
+                opts={opts} 
+                className="absolute top-[-30%] left-[-10%] w-[120%] h-[160%]"
+                onEnd={() => setShouldPlay(false)}
+              />
+            </div>
+          ) : (
+            <img
+              onClick={() => onPlayClick(movie)}
+              className="w-full h-full object-cover cursor-pointer"
+              loading="lazy"
+              src={`${base_url}${isLargeRow ? movie.poster_path : movie.backdrop_path}`}
+              alt={movie.name || movie.title}
+            />
+          )}
+          
+          {isHovered && (
+            <div className="absolute top-2 right-2 flex space-x-2">
+                <button
+                    onClick={(e) => toggleMyList(e, movie)}
+                    className="bg-black bg-opacity-60 rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                >
+                    {isAdded ? (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    ) : (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    )}
+                </button>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Section: Info (Only on Hover) */}
+        {isHovered && (
+          <div className="p-3 bg-[#181818]">
+            <div className="flex items-center space-x-2 mb-2">
+              <button 
+                onClick={() => navigate(`/watch/${mType}/${movie.id}`)}
+                className="bg-white text-black rounded-full p-1.5 hover:bg-opacity-80 transition-all"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button 
+                onClick={() => onPlayClick(movie)}
+                className="bg-transparent border border-gray-500 text-white rounded-full p-1.5 hover:border-white transition-all"
+              >
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                 </svg>
+              </button>
+            </div>
+            <p className="text-[10px] md:text-xs font-bold text-white truncate mb-1">{movie.title || movie.name}</p>
+            <div className="flex items-center space-x-2">
+                <span className="text-[8px] text-green-500 font-bold">{Math.round((movie.vote_average || 0) * 10)}% Match</span>
+                <span className="text-[8px] text-gray-400 border border-gray-600 px-1 rounded">HD</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesList }) => {
   const { user, updateMyList } = useAuth();
@@ -49,7 +171,7 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
     const getMediaType = (m: Movie) => m.media_type || (m.title ? "movie" : "tv");
 
     // Always show what we know is verified
-    const verified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === true);
+    const verified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] !== undefined && cache[`${getMediaType(m)}-${m.id}`] !== false);
     setFilteredMovies(verified);
 
     const unverified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === undefined);
@@ -65,9 +187,13 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
               : requests.fetchTvDetails(movie.id);
               
             const res = await axios.get(fetchUrl);
-            const hasVideo = (res.data.videos?.results?.length || 0) > 0;
-            setPlayableCache(movie.id, mType, hasVideo);
-            if (hasVideo) {
+            const videos = res.data.videos?.results || [];
+            const trailer = videos.find((v: any) => v.type === "Trailer" && v.site === "YouTube") || videos[0];
+            
+            const videoKey = trailer ? trailer.key : false;
+            setPlayableCache(movie.id, mType, videoKey);
+            
+            if (videoKey) {
               setFilteredMovies(prev => {
                 if (prev.some(m => m.id === movie.id)) return prev;
                 return [...prev, movie];
@@ -105,8 +231,8 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
   if (movies.length === 0 && Category_title === "My List") return null;
 
   return (
-    <div className="ml-4 md:ml-12 text-white mb-8 group/row">
-      <div className="flex items-center justify-between pr-4 md:pr-12">
+    <div className="ml-4 md:ml-12 text-white mb-12 group/row relative">
+      <div className="flex items-center justify-between pr-4 md:pr-12 relative z-20">
         <div className="flex items-center space-x-4">
           <h2 className="text-xl md:text-2xl font-bold mb-4">{Category_title}</h2>
           {verifying && (
@@ -122,42 +248,18 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
            </span>
         )}
       </div>
-      <div className="flex overflow-y-hidden overflow-x-scroll p-2 md:p-4 scrollbar-hide space-x-2 md:space-x-4">
+
+      <div className="flex overflow-y-visible overflow-x-scroll p-4 md:p-8 -m-4 md:-m-8 scrollbar-hide space-x-2 md:space-x-4 min-h-[150px] md:min-h-[200px]">
         {filteredMovies.map((movie) => (
           movie.backdrop_path && movie.poster_path && (
-            <div key={movie.id} className="relative group flex-shrink-0">
-              <img
-                onClick={() => handleClick(movie)}
-                className={`cursor-pointer rounded-md transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-110 object-cover ${
-                  isLargeRow ? "h-[200px] md:h-[250px] w-[140px] md:w-[170px]" : "h-[80px] md:h-[100px] w-[140px] md:w-[180px]"
-                }`}
-                loading="lazy"
-                src={`${base_url}${
-                  isLargeRow ? movie.poster_path : movie.backdrop_path
-                }`}
-                alt={movie.name || movie.title}
-              />
-              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex flex-col justify-end">
-                 <p className="text-[10px] md:text-xs font-bold truncate text-white">{movie.title || movie.name}</p>
-                 <div className="flex items-center space-x-1 mt-1">
-                    <span className="text-[8px] text-green-500 font-bold">{Math.round((movie.vote_average || 0) * 10)}% Match</span>
-                 </div>
-              </div>
-              <button
-                onClick={(e) => toggleMyList(e, movie)}
-                className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-600"
-              >
-                {user?.myList?.some((m: any) => m.id === movie.id) ? (
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                )}
-              </button>
-            </div>
+            <MovieCard 
+              key={movie.id}
+              movie={movie}
+              isLargeRow={isLargeRow}
+              onPlayClick={handleClick}
+              toggleMyList={toggleMyList}
+              isAdded={user?.myList?.some((m: any) => m.id === movie.id) || false}
+            />
           )
         ))}
       </div>

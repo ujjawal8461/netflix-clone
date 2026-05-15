@@ -2,7 +2,7 @@ export function truncate(str: string, n: number): string {
   return str?.length > n ? str.substr(0, n - 1) + "..." : str;
 }
 
-export const getPlayableCache = (): Record<string, boolean> => {
+export const getPlayableCache = (): Record<string, string | boolean> => {
   try {
     return JSON.parse(localStorage.getItem("playableCache") || "{}");
   } catch {
@@ -10,8 +10,8 @@ export const getPlayableCache = (): Record<string, boolean> => {
   }
 };
 
-export const setPlayableCache = (id: number, type: "movie" | "tv", hasVideo: boolean) => {
+export const setPlayableCache = (id: number, type: "movie" | "tv", videoKey: string | boolean) => {
   const cache = getPlayableCache();
-  cache[`${type}-${id}`] = hasVideo;
+  cache[`${type}-${id}`] = videoKey;
   localStorage.setItem("playableCache", JSON.stringify(cache));
 };
