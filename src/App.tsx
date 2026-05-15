@@ -71,12 +71,13 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-12">
                       {searchResults.filter(m => m.poster_path).map((movie) => (
                          <div key={movie.id} className="relative group cursor-pointer transition-transform duration-300 hover:scale-105">
-                           <img 
-                            onClick={() => navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`)}
-                            className="rounded-md w-full aspect-[2/3] object-cover"
-                            src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
-                            alt={movie.title || movie.name} 
-                           />
+                            <img 
+                             onClick={() => navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`)}
+                             className="rounded-md w-full aspect-[2/3] object-cover"
+                             loading="lazy"
+                             src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
+                             alt={movie.title || movie.name} 
+                            />
                            <div className="mt-2 text-white text-sm font-bold truncate">
                              {movie.title || movie.name}
                            </div>

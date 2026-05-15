@@ -8,7 +8,7 @@ import requests from "../api/requests";
 import { useAuth } from "../context/AuthContext";
 import MovieModal from "./MovieModal";
 
-const base_url = "https://image.tmdb.org/t/p/original/";
+const base_url = "https://image.tmdb.org/t/p/w500/";
 
 interface RowProps {
   Category_title: string;
@@ -131,6 +131,7 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
                 className={`cursor-pointer rounded-md transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-110 object-cover ${
                   isLargeRow ? "h-[200px] md:h-[250px] w-[140px] md:w-[170px]" : "h-[80px] md:h-[100px] w-[140px] md:w-[180px]"
                 }`}
+                loading="lazy"
                 src={`${base_url}${
                   isLargeRow ? movie.poster_path : movie.backdrop_path
                 }`}
