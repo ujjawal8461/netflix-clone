@@ -17,8 +17,16 @@ const Banner: React.FC = () => {
       try {
         const response = await axios.get(requests.fetchNetflixOriginals);
         const data = response.data.results;
-        const randomIndex = Math.floor(Math.random() * data.length);
-        setMovie(data[randomIndex]);
+        
+        // Try to find a movie that is likely to have a trailer (usually more popular ones)
+        // or just pick one and we'll fallback in the Watch component
+        const shuffled = [...data].sort(() => 0.5 - Math.random());
+        
+        // We'll just pick the first one from shuffled for now, 
+        // but we could theoretically check its video status if we wanted to be 100% sure.
+        // Given rate limits, we'll stick to random but maybe filter for those with backdrop.
+        const validMovies = shuffled.filter(m => m.backdrop_path && m.overview);
+        setMovie(validMovies[0] || shuffled[0]);
       } catch (error) {
         console.error("Error fetching banner data:", error);
       }

@@ -11,6 +11,8 @@ interface Requests {
   fetchSearch: string;
   fetchRecommendations: (id: string | number) => string;
   fetchMovieDetails: (id: string | number) => string;
+  fetchTvDetails: (id: string | number) => string;
+  fetchTvRecommendations: (id: string | number) => string;
 }
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -28,6 +30,8 @@ const requests: Requests = {
   fetchSearch: `/search/multi?api_key=${API_KEY}&language=en-US&include_adult=false&query=`,
   fetchRecommendations: (id: string | number) => `/movie/${id}/recommendations?api_key=${API_KEY}&language=en-US`,
   fetchMovieDetails: (id: string | number) => `/movie/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos`,
+  fetchTvDetails: (id: string | number) => `/tv/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos`,
+  fetchTvRecommendations: (id: string | number) => `/tv/${id}/recommendations?api_key=${API_KEY}&language=en-US`,
 };
 
 export default requests;

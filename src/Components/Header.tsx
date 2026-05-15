@@ -42,8 +42,8 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
     return () => clearTimeout(timer);
   }, [searchQuery, onSearch]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/");
   };
 
@@ -56,8 +56,8 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
         
         <nav className="hidden lg:flex items-center space-x-4 text-sm text-gray-200 font-medium">
           <Link to="/" className="hover:text-gray-400 transition-colors">Home</Link>
-          <a href="#" className="hover:text-gray-400 transition-colors">TV Shows</a>
-          <a href="#" className="hover:text-gray-400 transition-colors">Movies</a>
+          <Link to="/tv" className="hover:text-gray-400 transition-colors">TV Shows</Link>
+          <Link to="/movies" className="hover:text-gray-400 transition-colors">Movies</Link>
           <a href="#" className="hover:text-gray-400 transition-colors">New & Popular</a>
           <Link to="/mylist" className="hover:text-gray-400 transition-colors">My List</Link>
         </nav>

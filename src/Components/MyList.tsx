@@ -2,17 +2,59 @@ import React, { useEffect, useState } from "react";
 import Header from "./Header";
 import { Movie } from "../types";
 import { useNavigate } from "react-router-dom";
+import axios from "../api/axios";
+import requests from "../api/requests";
+import { getPlayableCache, setPlayableCache } from "../utils";
+import { useAuth } from "../context/AuthContext";
 
 const base_url = "https://image.tmdb.org/t/p/original/";
 
 const MyList: React.FC = () => {
+  const { user, updateMyList } = useAuth();
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
+  const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("myList") || "[]");
-    setMovies(saved);
-  }, []);
+    if (user?.myList) {
+      setMovies(user.myList);
+    }
+  }, [user?.myList]);
+
+  // Handle filtering and background verification automatically
+  useEffect(() => {
+    const cache = getPlayableCache();
+    
+    const verified = movies.filter(m => cache[m.id] === true);
+    setFilteredMovies(verified);
+
+    const unverified = movies.filter(m => cache[m.id] === undefined);
+    
+    if (unverified.length > 0 && !verifying) {
+      setVerifying(true);
+      const verifyBatch = async () => {
+        for (const movie of unverified.slice(0, 15)) {
+          try {
+            const res = await axios.get(requests.fetchMovieDetails(movie.id));
+            const hasVideo = (res.data.videos?.results?.length || 0) > 0;
+            setPlayableCache(movie.id, hasVideo);
+            if (hasVideo) {
+              setFilteredMovies(prev => {
+                if (prev.some(m => m.id === movie.id)) return prev;
+                return [...prev, movie];
+              });
+            }
+          } catch (err) {
+            setPlayableCache(movie.id, false);
+          }
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
+        setVerifying(false);
+      };
+      verifyBatch();
+    }
+  }, [movies, verifying]);
 
   const handleClick = (movie: Movie) => {
     navigate(`/watch/${movie.id}`);
@@ -20,9 +62,7 @@ const MyList: React.FC = () => {
 
   const removeFromList = (e: React.MouseEvent, movie: Movie) => {
     e.stopPropagation();
-    const updatedList = movies.filter((m) => m.id !== movie.id);
-    localStorage.setItem("myList", JSON.stringify(updatedList));
-    setMovies(updatedList);
+    updateMyList(movie);
   };
 
   return (
@@ -30,16 +70,21 @@ const MyList: React.FC = () => {
       <Header />
       
       <div className="pt-24 px-4 md:px-12 pb-12">
-        <h1 className="text-3xl font-bold mb-8">My List</h1>
+        <div className="flex items-center space-x-6 mb-8">
+          <h1 className="text-3xl font-bold">My List</h1>
+          {verifying && (
+            <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin ml-1" title="Verifying playability..." />
+          )}
+        </div>
         
-        {movies.length > 0 ? (
+        {filteredMovies.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {movies.map((movie) => (
+            {filteredMovies.map((movie) => (
               <div key={movie.id} className="relative group cursor-pointer transition-transform duration-300 hover:scale-105">
                 <img
                   onClick={() => handleClick(movie)}
-                  className="rounded-md w-full aspect-video object-cover"
-                  src={`${base_url}${movie.backdrop_path || movie.poster_path}`}
+                  className="rounded-md w-full aspect-[2/3] object-cover"
+                  src={`${base_url}${movie.poster_path || movie.backdrop_path}`}
                   alt={movie.name || movie.title}
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
@@ -60,7 +105,7 @@ const MyList: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-[50vh] text-gray-500">
-            <p className="text-xl">You haven't added any titles to your list yet.</p>
+            <p className="text-xl">You haven't added any playable titles to your list yet.</p>
             <button 
               onClick={() => navigate("/")}
               className="mt-4 px-6 py-2 border border-gray-500 hover:border-white hover:text-white transition-all"

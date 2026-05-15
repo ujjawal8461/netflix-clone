@@ -3,22 +3,27 @@ import axios from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { RowSkeleton } from "./Skeleton";
 import { Movie } from "../types";
+import { getPlayableCache, setPlayableCache } from "../utils";
+import requests from "../api/requests";
+import { useAuth } from "../context/AuthContext";
+import MovieModal from "./MovieModal";
 
 const base_url = "https://image.tmdb.org/t/p/original/";
 
-
-
 interface RowProps {
   Category_title: string;
-  fetchUrl?: string; // Optional if movies are passed directly
+  fetchUrl?: string; 
   isLargeRow?: boolean;
-  moviesList?: Movie[]; // For "My List" or Search Results
+  moviesList?: Movie[];
 }
 
 const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesList }) => {
+  const { user, updateMyList } = useAuth();
   const navigate = useNavigate();
   const [movies, setMovies] = useState<Movie[]>([]);
-  const [myList, setMyList] = useState<number[]>([]);
+  const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
+  const [verifying, setVerifying] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   useEffect(() => {
     if (moviesList) {
@@ -34,51 +39,65 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
       }
       fetchData();
     }
-
-    // Load "My List" IDs from LocalStorage for the icons
-    const savedList = JSON.parse(localStorage.getItem("myList") || "[]");
-    setMyList(savedList.map((m: any) => m.id));
   }, [fetchUrl, moviesList]);
 
+  // Handle filtering and background verification automatically
+  useEffect(() => {
+    const cache = getPlayableCache();
+    
+    // Always show what we know is verified
+    const verified = movies.filter(m => cache[m.id] === true);
+    setFilteredMovies(verified);
+
+    const unverified = movies.filter(m => cache[m.id] === undefined);
+    
+    if (unverified.length > 0 && !verifying) {
+      setVerifying(true);
+      const verifyBatch = async () => {
+        for (const movie of unverified.slice(0, 10)) {
+          try {
+            const res = await axios.get(requests.fetchMovieDetails(movie.id));
+            const hasVideo = (res.data.videos?.results?.length || 0) > 0;
+            setPlayableCache(movie.id, hasVideo);
+            if (hasVideo) {
+              setFilteredMovies(prev => {
+                if (prev.some(m => m.id === movie.id)) return prev;
+                return [...prev, movie];
+              });
+            }
+          } catch (err) {
+            setPlayableCache(movie.id, false);
+          }
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
+        setVerifying(false);
+      };
+      verifyBatch();
+    }
+  }, [movies, verifying]);
+
+
   const handleClick = (movie: Movie) => {
-    navigate(`/watch/${movie.id}`);
+    setSelectedMovie(movie);
   };
 
   const toggleMyList = (e: React.MouseEvent, movie: Movie) => {
     e.stopPropagation();
-    let currentList = JSON.parse(localStorage.getItem("myList") || "[]");
-    const isSaved = currentList.some((m: any) => m.id === movie.id);
-
-    if (isSaved) {
-      currentList = currentList.filter((m: any) => m.id !== movie.id);
-    } else {
-      currentList.push(movie);
-    }
-
-    localStorage.setItem("myList", JSON.stringify(currentList));
-    setMyList(currentList.map((m: any) => m.id));
-    
-    // If we are in the "My List" row, we might want to update the UI immediately
-    if (Category_title === "My List") {
-        setMovies(currentList);
-    }
-  };
-
-  const opts = {
-    height: "390",
-    width: "100%",
-    playerVars: {
-      autoplay: 1 as const,
-    },
+    updateMyList(movie);
   };
 
   if (!moviesList && movies.length === 0) return <RowSkeleton isLargeRow={isLargeRow} />;
-  if (movies.length === 0 && Category_title === "My List") return null; // Don't show empty My List
+  if (movies.length === 0 && Category_title === "My List") return null;
 
   return (
     <div className="ml-4 md:ml-12 text-white mb-8 group/row">
       <div className="flex items-center justify-between pr-4 md:pr-12">
-        <h2 className="text-xl md:text-2xl font-bold mb-4">{Category_title}</h2>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-xl md:text-2xl font-bold mb-4">{Category_title}</h2>
+          {verifying && (
+            <div className="mb-4 w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin ml-1" title="Verifying playability..." />
+          )}
+        </div>
         {Category_title === "My List" && (
            <span 
             onClick={() => navigate("/mylist")}
@@ -89,7 +108,7 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
         )}
       </div>
       <div className="flex overflow-y-hidden overflow-x-scroll p-2 md:p-4 scrollbar-hide space-x-2 md:space-x-4">
-        {movies.map((movie) => (
+        {filteredMovies.map((movie) => (
           movie.backdrop_path && movie.poster_path && (
             <div key={movie.id} className="relative group flex-shrink-0">
               <img
@@ -102,14 +121,17 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
                 }`}
                 alt={movie.name || movie.title}
               />
-              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                 <p className="text-[10px] md:text-xs font-bold truncate">{movie.title || movie.name}</p>
+              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none flex flex-col justify-end">
+                 <p className="text-[10px] md:text-xs font-bold truncate text-white">{movie.title || movie.name}</p>
+                 <div className="flex items-center space-x-1 mt-1">
+                    <span className="text-[8px] text-green-500 font-bold">{Math.round((movie.vote_average || 0) * 10)}% Match</span>
+                 </div>
               </div>
               <button
                 onClick={(e) => toggleMyList(e, movie)}
                 className="absolute top-2 right-2 bg-black bg-opacity-60 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-600"
               >
-                {myList.includes(movie.id) ? (
+                {user?.myList?.some((m: any) => m.id === movie.id) ? (
                   <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -123,6 +145,13 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
           )
         ))}
       </div>
+      
+      {selectedMovie && (
+        <MovieModal 
+            movie={selectedMovie} 
+            onClose={() => setSelectedMovie(null)} 
+        />
+      )}
     </div>
   );
 };

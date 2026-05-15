@@ -18,8 +18,15 @@ const Watch: React.FC = () => {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await axios.get(requests.fetchMovieDetails(id!));
-        const movieData = response.data;
+        let movieData;
+        try {
+          const response = await axios.get(requests.fetchMovieDetails(id!));
+          movieData = response.data;
+        } catch (err) {
+          const response = await axios.get(requests.fetchTvDetails(id!));
+          movieData = response.data;
+        }
+        
         setMovie(movieData);
         
         // 1. Try to find official trailer from TMDB videos
@@ -89,7 +96,18 @@ const Watch: React.FC = () => {
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                     </svg>
                 </div>
-                <h2 className="text-2xl font-bold">Trailer Unavailable</h2>
+                <h2 className="text-2xl font-bold mb-4">Trailer Unavailable</h2>
+                <a 
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent((movie.title || movie.name) + " trailer")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white text-black px-6 py-2 rounded font-bold hover:bg-opacity-80 transition-all flex items-center"
+                >
+                  <svg className="w-5 h-5 mr-2 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                  </svg>
+                  Search on YouTube
+                </a>
             </div>
           </div>
         )}
@@ -160,7 +178,7 @@ const Watch: React.FC = () => {
           <div className="-mx-4 md:-mx-12">
             <Row 
               Category_title="" 
-              fetchUrl={requests.fetchRecommendations(id!)} 
+              fetchUrl={movie.title ? requests.fetchRecommendations(id!) : requests.fetchTvRecommendations(id!)} 
             />
           </div>
         </div>

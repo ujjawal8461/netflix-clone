@@ -20,4 +20,5 @@ export interface Movie {
       type: string;
     }[];
   };
+  hasVideo?: boolean;
 }
