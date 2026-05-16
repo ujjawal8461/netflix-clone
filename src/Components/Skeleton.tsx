@@ -29,3 +29,18 @@ export const RowSkeleton: React.FC<{ isLargeRow?: boolean }> = ({ isLargeRow }) 
     </div>
   </div>
 );
+
+export const SearchSkeleton: React.FC = () => (
+  <div className="pt-28 px-4 md:px-12 pb-20 min-h-screen bg-[#111]">
+    <div className="h-8 bg-gray-800 rounded w-64 mb-8 animate-pulse"></div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-12">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+        <div key={i} className="space-y-2">
+          <div className="bg-gray-800 rounded-md animate-pulse w-full aspect-[2/3]"></div>
+          <div className="h-4 bg-gray-800 rounded w-3/4 animate-pulse"></div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+

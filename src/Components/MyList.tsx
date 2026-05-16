@@ -33,7 +33,10 @@ const MyList: React.FC = () => {
     });
     setFilteredMovies(verified);
 
-    const unverified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === undefined);
+    const unverified = movies.filter(m => {
+      const val = cache[`${getMediaType(m)}-${m.id}`];
+      return val === undefined || val === true;
+    });
     
     if (unverified.length > 0 && !verifying) {
       setVerifying(true);

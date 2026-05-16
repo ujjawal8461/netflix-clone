@@ -23,7 +23,17 @@ const Watch: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const controlsTimeoutRef = useRef<any | null>(null);
+
+  // Sync fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -67,10 +77,25 @@ const Watch: React.FC = () => {
   const handleMouseMove = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
-    }, 3000);
+    
+    // Only hide if video is playing
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+    }
   }, [isPlaying]);
+
+  // Keep controls visible if paused
+  useEffect(() => {
+    if (!isPlaying) {
+      setShowControls(true);
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    } else {
+      // If we just started playing, start the hide timeout
+      handleMouseMove();
+    }
+  }, [isPlaying, handleMouseMove]);
 
   // Sync Progress
   useEffect(() => {
@@ -98,6 +123,8 @@ const Watch: React.FC = () => {
         skip(-10);
       } else if (e.code === "KeyM") {
         toggleMute();
+      } else if (e.code === "KeyF") {
+        toggleFullscreen();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -122,6 +149,19 @@ const Watch: React.FC = () => {
       player.mute();
     }
     setIsMuted(!isMuted);
+  };
+
+  const toggleFullscreen = () => {
+    const element = document.documentElement;
+    if (!document.fullscreenElement) {
+      if (element.requestFullscreen) {
+        element.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
   };
 
   const skip = (seconds: number) => {
@@ -155,13 +195,16 @@ const Watch: React.FC = () => {
       disablekb: 1,
       mute: isMuted ? 1 : 0,
       origin: window.location.origin,
+      enablejsapi: 1,
+      widget_referrer: window.location.origin,
     },
+    host: 'https://www.youtube-nocookie.com',
   };
 
   if (!movie) return null;
 
   return (
-    <div className="bg-[#111] min-h-screen text-white pb-20 select-none" onMouseMove={handleMouseMove}>
+    <div className={`bg-[#111] min-h-screen text-white pb-20 select-none ${!showControls ? "cursor-none" : ""}`} onMouseMove={handleMouseMove}>
       <Header />
       
       {/* Video Player Section */}
@@ -172,9 +215,19 @@ const Watch: React.FC = () => {
               videoId={trailerUrl} 
               opts={opts} 
               className="w-full h-full scale-[1.35]" 
-              onReady={(e: any) => setPlayer(e.target)}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
+              onReady={(e: any) => {
+                console.log("[DEBUG] Watch page player ready");
+                setPlayer(e.target);
+              }}
+              onPlay={() => {
+                console.log("[DEBUG] Watch page player playing");
+                setIsPlaying(true);
+              }}
+              onPause={() => {
+                console.log("[DEBUG] Watch page player paused");
+                setIsPlaying(false);
+              }}
+              onError={(e: any) => console.error("[DEBUG] Watch page player error:", e.data)}
             />
           </div>
         ) : (
@@ -205,9 +258,10 @@ const Watch: React.FC = () => {
         {/* CUSTOM CONTROLS OVERLAY */}
         <div 
           className={`absolute inset-0 z-30 transition-opacity duration-500 bg-gradient-to-t from-black via-transparent to-black ${
-            showControls ? "opacity-100" : "opacity-0 cursor-none"
+            showControls ? "opacity-100" : "opacity-0"
           }`}
           onClick={togglePlay}
+          onDoubleClick={toggleFullscreen}
         >
           {/* Back Button */}
           <button 
@@ -301,15 +355,17 @@ const Watch: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-6">
-                    <button className="hover:scale-110 transition-transform">
-                        <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m4 0h1m-7 4h12a2 2 0 002-2V5a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </button>
-                    <button onClick={() => document.documentElement.requestFullscreen()} className="hover:scale-110 transition-transform">
-                        <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                        </svg>
+
+                    <button onClick={toggleFullscreen} className="hover:scale-110 transition-transform">
+                        {isFullscreen ? (
+                          <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+                          </svg>
+                        ) : (
+                          <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                        )}
                     </button>
                 </div>
             </div>

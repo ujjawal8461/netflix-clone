@@ -18,13 +18,13 @@ interface RowProps {
   moviesList?: Movie[];
 }
 
-const MovieCard: React.FC<{ 
+const MovieCard = React.memo<{ 
   movie: Movie; 
   isLargeRow?: boolean; 
   onPlayClick: (movie: Movie) => void;
   toggleMyList: (e: React.MouseEvent, movie: Movie) => void;
   isAdded: boolean;
-}> = ({ movie, isLargeRow, onPlayClick, toggleMyList, isAdded }) => {
+}>(({ movie, isLargeRow, onPlayClick, toggleMyList, isAdded }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [shouldPlay, setShouldPlay] = useState(false);
   const navigate = useNavigate();
@@ -35,16 +35,23 @@ const MovieCard: React.FC<{
   useEffect(() => {
     let timeout: any;
     if (isHovered) {
+      console.log(`[DEBUG] Hover started for: ${movie.title || movie.name}`);
       if (typeof videoKey === "string") {
-        timeout = setTimeout(() => setShouldPlay(true), 600);
-      } else if (videoKey === false) {
-        console.warn(`No trailer found for movie: ${movie.title || movie.name}`);
+        console.log(`[DEBUG] Video key found: ${videoKey}. Setting play timeout...`);
+        timeout = setTimeout(() => {
+          console.log(`[DEBUG] Timeout reached. Setting shouldPlay to true for: ${movie.title || movie.name}`);
+          setShouldPlay(true);
+        }, 600);
+      } else {
+        console.log(`[DEBUG] No video key in cache yet for: ${movie.title || movie.name}. (videoKey: ${videoKey})`);
       }
     } else {
       setShouldPlay(false);
     }
-    return () => clearTimeout(timeout);
-  }, [isHovered, videoKey, movie.id]);
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isHovered, videoKey, movie.id, movie.title, movie.name]);
 
   const opts = {
     height: "100%",
@@ -56,7 +63,10 @@ const MovieCard: React.FC<{
       rel: 0,
       mute: 1,
       origin: window.location.origin,
+      enablejsapi: 1,
+      widget_referrer: window.location.origin,
     },
+    host: 'https://www.youtube-nocookie.com',
   };
 
   return (
@@ -79,12 +89,33 @@ const MovieCard: React.FC<{
                 opts={opts} 
                 className="absolute top-[-30%] left-[-10%] w-[120%] h-[160%]"
                 onReady={(event: any) => {
-                  event.target.mute();
-                  event.target.playVideo();
+                  console.log(`[DEBUG] YouTube Player Ready for: ${movie.title || movie.name}`);
+                  try {
+                    event.target.mute();
+                    const playPromise = event.target.playVideo();
+                    // YouTube API sometimes returns a promise for playVideo in modern browsers
+                    if (playPromise && typeof playPromise.catch === 'function') {
+                      playPromise.catch((err: any) => {
+                        console.error(`[DEBUG] playVideo() promise rejected for ${movie.title || movie.name}:`, err);
+                      });
+                    }
+                  } catch (e) {
+                    console.error(`[DEBUG] Error in onReady for ${movie.title || movie.name}:`, e);
+                  }
                 }}
-                onEnd={() => setShouldPlay(false)}
-                onError={() => {
-                  console.error("YouTube Player Error");
+                onPlay={() => console.log(`[DEBUG] YouTube Player STARTED playing: ${movie.title || movie.name}`)}
+                onStateChange={(e: any) => {
+                    console.log(`[DEBUG] YouTube Player State Change for ${movie.title || movie.name}:`, e.data);
+                    // 1 is playing, 3 is buffering, -1 is unstarted, 2 is paused, 0 is ended
+                    if (e.data === -1) console.log(`[DEBUG] Player state is UNSTARTED (-1)`);
+                    if (e.data === 2) console.log(`[DEBUG] Player state is PAUSED (2) - Likely blocked by browser`);
+                }}
+                onEnd={() => {
+                  console.log(`[DEBUG] YouTube Player Ended: ${movie.title || movie.name}`);
+                  setShouldPlay(false);
+                }}
+                onError={(e: any) => {
+                  console.error(`[DEBUG] YouTube Player Error for ${movie.title || movie.name}:`, e.data);
                   setShouldPlay(false);
                 }}
               />
@@ -150,7 +181,7 @@ const MovieCard: React.FC<{
       </div>
     </div>
   );
-};
+});
 
 const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesList }) => {
   const { user, updateMyList } = useAuth();
@@ -187,7 +218,10 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
     const verified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] !== undefined && cache[`${getMediaType(m)}-${m.id}`] !== false);
     setFilteredMovies(verified);
 
-    const unverified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === undefined);
+    const unverified = movies.filter(m => {
+      const val = cache[`${getMediaType(m)}-${m.id}`];
+      return val === undefined || val === true;
+    });
     
     if (unverified.length > 0 && !verifying) {
       setVerifying(true);

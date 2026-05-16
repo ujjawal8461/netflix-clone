@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "./Components/Header";
 import Row from "./Components/Row";
 import Banner from "./Components/Banner";
@@ -10,6 +10,7 @@ import MyList from "./Components/MyList";
 import Landing from "./Components/Landing";
 import CategoryPage from "./Components/CategoryPage";
 import Footer from "./Components/Footer";
+import { SearchSkeleton } from "./Components/Skeleton";
 import requests from "./api/requests";
 import axios from "./api/axios";
 import { Movie } from "./types";
@@ -17,8 +18,10 @@ import { useAuth } from "./context/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
 
 const App: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get("q") || "";
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -28,22 +31,29 @@ const App: React.FC = () => {
     if (searchQuery) {
       async function fetchSearch() {
         try {
+          setIsSearching(true);
           const response = await axios.get(`${requests.fetchSearch}${searchQuery}`);
           setSearchResults(response.data.results);
         } catch (error) {
           console.error("Search error:", error);
+        } finally {
+          setIsSearching(false);
         }
       }
       fetchSearch();
     } else {
       setSearchResults([]);
+      setIsSearching(false);
     }
   }, [searchQuery]);
 
-  // Clear search on navigation
-  useEffect(() => {
-    setSearchQuery("");
-  }, [location]);
+  const handleSearch = (query: string) => {
+    if (query) {
+      setSearchParams({ q: query });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   return (
     <div className="bg-[#111] min-h-screen">
@@ -64,26 +74,43 @@ const App: React.FC = () => {
           <>
             <Route path="/" element={
               <div className="pb-12">
-                <Header onSearch={(query) => setSearchQuery(query)} />
-                {searchQuery ? (
+                <Header onSearch={handleSearch} />
+                {isSearching ? (
+                  <SearchSkeleton />
+                ) : searchQuery ? (
                   <div className="pt-28 px-4 md:px-12 pb-20 min-h-screen bg-[#111]">
                     <h2 className="text-xl md:text-2xl font-bold mb-8 text-white">Search Results for "{searchQuery}"</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-12">
-                      {searchResults.filter(m => m.poster_path).map((movie) => (
-                         <div key={movie.id} className="relative group cursor-pointer transition-transform duration-300 hover:scale-105">
-                            <img 
-                             onClick={() => navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`)}
-                             className="rounded-md w-full aspect-[2/3] object-cover"
-                             loading="lazy"
-                             src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
-                             alt={movie.title || movie.name} 
-                            />
-                           <div className="mt-2 text-white text-sm font-bold truncate">
-                             {movie.title || movie.name}
-                           </div>
-                         </div>
-                      ))}
-                    </div>
+                    {searchResults.filter(m => m.poster_path).length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-12">
+                        {searchResults.filter(m => m.poster_path).map((movie) => (
+                          <div key={movie.id} className="relative group cursor-pointer transition-transform duration-300 hover:scale-105">
+                              <img 
+                              onClick={() => navigate(`/watch/${movie.media_type || (movie.title ? 'movie' : 'tv')}/${movie.id}`)}
+                              className="rounded-md w-full aspect-[2/3] object-cover shadow-lg"
+                              loading="lazy"
+                              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
+                              alt={movie.title || movie.name} 
+                              />
+                            <div className="mt-2 text-white text-sm font-bold truncate">
+                              {movie.title || movie.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-20 text-gray-400">
+                        <svg className="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <p className="text-xl">Your search for "{searchQuery}" did not have any matches.</p>
+                        <p className="mt-2 text-sm">Suggestions:</p>
+                        <ul className="mt-1 list-disc list-inside text-xs">
+                          <li>Try different keywords</li>
+                          <li>Looking for a movie or TV show?</li>
+                          <li>Try using a movie title or actor name</li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -110,6 +137,11 @@ const App: React.FC = () => {
                         isLargeRow
                       />
                       <Row
+                        Category_title="Popular on Netflix"
+                        fetchUrl={requests.fetchPopular}
+                        isLargeRow
+                      />
+                      <Row
                         Category_title="Action Movies"
                         fetchUrl={requests.fetchActionMovies}
                         isLargeRow
@@ -127,6 +159,31 @@ const App: React.FC = () => {
                       <Row
                         Category_title="Romance Movies"
                         fetchUrl={requests.fetchRomanceMovies}
+                        isLargeRow
+                      />
+                      <Row
+                        Category_title="Sci-Fi Movies"
+                        fetchUrl={requests.fetchSciFiMovies}
+                        isLargeRow
+                      />
+                      <Row
+                        Category_title="Animation"
+                        fetchUrl={requests.fetchAnimationMovies}
+                        isLargeRow
+                      />
+                      <Row
+                        Category_title="Mystery & Thriller"
+                        fetchUrl={requests.fetchMysteryMovies}
+                        isLargeRow
+                      />
+                      <Row
+                        Category_title="Trending Thrillers"
+                        fetchUrl={requests.fetchThrillerMovies}
+                        isLargeRow
+                      />
+                      <Row
+                        Category_title="History & War"
+                        fetchUrl={requests.fetchHistoryMovies}
                         isLargeRow
                       />
                       <Row

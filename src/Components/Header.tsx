@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 // @ts-ignore
 import netflixLogo from "../assets/netflix-logo.png";
@@ -12,7 +12,9 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onSearch }) => {
   const [show, handleShow] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const { profile, logout } = useAuth();
@@ -31,6 +33,11 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
       window.removeEventListener("scroll", scrollListener);
     };
   }, []);
+
+  // Sync internal state if URL changes (e.g. back button)
+  useEffect(() => {
+    setSearchQuery(urlQuery);
+  }, [urlQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -74,7 +81,7 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
       <div className="flex items-center space-x-4">
         {/* Search Bar */}
         <div className="relative group flex items-center">
-          <button className="text-white focus:outline-none">
+          <button className="text-white focus:outline-none z-10">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -82,7 +89,11 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
           <input
             type="text"
             placeholder="Titles, people, genres"
-            className="bg-black bg-opacity-70 text-white border border-white text-xs py-1 px-8 focus:outline-none transition-all duration-300 w-0 group-hover:w-40 md:group-hover:w-64 absolute right-0 -z-10 opacity-0 group-hover:opacity-100"
+            className={`bg-black bg-opacity-70 text-white border border-white text-xs py-1 px-8 focus:outline-none transition-all duration-300 absolute right-0 -z-10 ${
+              searchQuery 
+                ? "w-40 md:w-64 opacity-100" 
+                : "w-0 opacity-0 group-hover:w-40 md:group-hover:w-64 group-hover:opacity-100"
+            }`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -128,3 +139,4 @@ const Header: React.FC<HeaderProps> = ({ onSearch }) => {
 }
 
 export default Header;
+
