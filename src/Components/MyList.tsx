@@ -25,20 +25,32 @@ const MyList: React.FC = () => {
   // Handle filtering and background verification automatically
   useEffect(() => {
     const cache = getPlayableCache();
+    const getMediaType = (m: Movie) => m.media_type || (m.title ? "movie" : "tv");
     
-    const verified = movies.filter(m => cache[m.id] === true);
+    const verified = movies.filter(m => {
+      const key = `${getMediaType(m)}-${m.id}`;
+      return cache[key] !== undefined && cache[key] !== false;
+    });
     setFilteredMovies(verified);
 
-    const unverified = movies.filter(m => cache[m.id] === undefined);
+    const unverified = movies.filter(m => cache[`${getMediaType(m)}-${m.id}`] === undefined);
     
     if (unverified.length > 0 && !verifying) {
       setVerifying(true);
       const verifyBatch = async () => {
         for (const movie of unverified.slice(0, 15)) {
+          const mType = getMediaType(movie);
           try {
-            const res = await axios.get(requests.fetchMovieDetails(movie.id));
-            const hasVideo = (res.data.videos?.results?.length || 0) > 0;
-            setPlayableCache(movie.id, hasVideo);
+            const fetchUrl = mType === "movie" 
+              ? requests.fetchMovieDetails(movie.id) 
+              : requests.fetchTvDetails(movie.id);
+              
+            const res = await axios.get(fetchUrl);
+            const videos = res.data.videos?.results || [];
+            const hasVideo = videos.length > 0;
+            
+            setPlayableCache(movie.id, mType, hasVideo ? videos[0].key : false);
+            
             if (hasVideo) {
               setFilteredMovies(prev => {
                 if (prev.some(m => m.id === movie.id)) return prev;
@@ -46,7 +58,7 @@ const MyList: React.FC = () => {
               });
             }
           } catch (err) {
-            setPlayableCache(movie.id, false);
+            setPlayableCache(movie.id, mType, false);
           }
           await new Promise(resolve => setTimeout(resolve, 150));
         }
@@ -57,7 +69,8 @@ const MyList: React.FC = () => {
   }, [movies, verifying]);
 
   const handleClick = (movie: Movie) => {
-    navigate(`/watch/${movie.id}`);
+    const mType = movie.media_type || (movie.title ? "movie" : "tv");
+    navigate(`/watch/${mType}/${movie.id}`);
   };
 
   const removeFromList = (e: React.MouseEvent, movie: Movie) => {

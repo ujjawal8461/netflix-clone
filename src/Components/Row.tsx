@@ -33,14 +33,18 @@ const MovieCard: React.FC<{
   const videoKey = cache[`${mType}-${movie.id}`];
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    if (isHovered && typeof videoKey === "string") {
-      timeout = setTimeout(() => setShouldPlay(true), 600);
+    let timeout: any;
+    if (isHovered) {
+      if (typeof videoKey === "string") {
+        timeout = setTimeout(() => setShouldPlay(true), 600);
+      } else if (videoKey === false) {
+        console.warn(`No trailer found for movie: ${movie.title || movie.name}`);
+      }
     } else {
       setShouldPlay(false);
     }
     return () => clearTimeout(timeout);
-  }, [isHovered, videoKey]);
+  }, [isHovered, videoKey, movie.id]);
 
   const opts = {
     height: "100%",
@@ -51,6 +55,7 @@ const MovieCard: React.FC<{
       modestbranding: 1,
       rel: 0,
       mute: 1,
+      origin: window.location.origin,
     },
   };
 
@@ -73,7 +78,15 @@ const MovieCard: React.FC<{
                 videoId={videoKey} 
                 opts={opts} 
                 className="absolute top-[-30%] left-[-10%] w-[120%] h-[160%]"
+                onReady={(event: any) => {
+                  event.target.mute();
+                  event.target.playVideo();
+                }}
                 onEnd={() => setShouldPlay(false)}
+                onError={() => {
+                  console.error("YouTube Player Error");
+                  setShouldPlay(false);
+                }}
               />
             </div>
           ) : (

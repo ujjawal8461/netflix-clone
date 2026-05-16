@@ -23,7 +23,7 @@ const Watch: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const controlsTimeoutRef = useRef<any | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -74,7 +74,7 @@ const Watch: React.FC = () => {
 
   // Sync Progress
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (player && isPlaying) {
       interval = setInterval(async () => {
         const time = await player.getCurrentTime();
@@ -153,6 +153,8 @@ const Watch: React.FC = () => {
       showinfo: 0,
       iv_load_policy: 3,
       disablekb: 1,
+      mute: isMuted ? 1 : 0,
+      origin: window.location.origin,
     },
   };
 
@@ -170,7 +172,7 @@ const Watch: React.FC = () => {
               videoId={trailerUrl} 
               opts={opts} 
               className="w-full h-full scale-[1.35]" 
-              onReady={(e) => setPlayer(e.target)}
+              onReady={(e: any) => setPlayer(e.target)}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             />

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const profilesList = [
-  { name: "Ujjawal", avatar: "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" },
   { name: "Guest", avatar: "https://wallpapers.com/images/hd/netflix-profile-pictures-1000-x-1000-qo9h82134t9nv0j0.jpg" },
   { name: "Kids", avatar: "https://ih1.redbubble.net/image.618363037.0853/flat,1000x1000,075,f.u2.jpg" },
 ];
