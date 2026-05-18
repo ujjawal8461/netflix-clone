@@ -121,13 +121,23 @@ const MovieCard = React.memo<{
               />
             </div>
           ) : (
-            <img
-              onClick={() => onPlayClick(movie)}
-              className="w-full h-full object-cover cursor-pointer"
-              loading="lazy"
-              src={`${base_url}${isLargeRow ? movie.poster_path : movie.backdrop_path}`}
-              alt={movie.name || movie.title}
-            />
+            <div className="relative w-full h-full">
+              <img
+                onClick={() => onPlayClick(movie)}
+                className="w-full h-full object-cover cursor-pointer"
+                loading="lazy"
+                src={`${base_url}${isLargeRow ? movie.poster_path : movie.backdrop_path}`}
+                alt={movie.name || movie.title}
+              />
+              {movie.progress !== undefined && (
+                <div className="absolute bottom-0 left-0 w-full h-1 bg-[#555] overflow-hidden">
+                  <div 
+                    className="h-full bg-[#e50914]" 
+                    style={{ width: `${Math.min(100, Math.max(0, movie.progress))}%` }}
+                  />
+                </div>
+              )}
+            </div>
           )}
           
           {isHovered && (
@@ -176,6 +186,14 @@ const MovieCard = React.memo<{
                 <span className="text-[8px] text-green-500 font-bold">{Math.round((movie.vote_average || 0) * 10)}% Match</span>
                 <span className="text-[8px] text-gray-400 border border-gray-600 px-1 rounded">HD</span>
             </div>
+            {movie.progress !== undefined && (
+              <div className="w-full h-1 bg-[#555] rounded-full mt-2.5 overflow-hidden">
+                <div 
+                  className="h-full bg-[#e50914]" 
+                  style={{ width: `${Math.min(100, Math.max(0, movie.progress))}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -184,7 +202,7 @@ const MovieCard = React.memo<{
 });
 
 const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesList }) => {
-  const { user, updateMyList } = useAuth();
+  const { user, profile, updateMyList } = useAuth();
   const navigate = useNavigate();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
@@ -305,7 +323,7 @@ const Row: React.FC<RowProps> = ({ Category_title, fetchUrl, isLargeRow, moviesL
               isLargeRow={isLargeRow}
               onPlayClick={handleClick}
               toggleMyList={toggleMyList}
-              isAdded={user?.myList?.some((m: any) => m.id === movie.id) || false}
+              isAdded={((typeof profile === 'object' && profile !== null && 'myList' in profile) ? profile.myList : user?.myList)?.some((m: any) => m.id === movie.id) || false}
             />
           )
         ))}

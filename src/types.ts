@@ -22,4 +22,7 @@ export interface Movie {
   };
   hasVideo?: boolean;
   media_type?: "movie" | "tv";
+  progress?: number;
+  timestamp?: number;
+  duration?: number;
 }

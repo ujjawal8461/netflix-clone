@@ -9,7 +9,7 @@ import netflixLogo from "../assets/netflix-logo.png";
 const Landing: React.FC = () => {
   const [email, setEmail] = useState("");
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, loginAsGuest } = useAuth();
 
   const handleGetStarted = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,13 +17,8 @@ const Landing: React.FC = () => {
   };
 
   const handleGuest = async () => {
-    try {
-      await login("guest@example.com");
-      navigate("/profiles");
-    } catch (err) {
-      await signup("guest@example.com");
-      navigate("/profiles");
-    }
+    loginAsGuest();
+    navigate("/profiles");
   };
 
   return (

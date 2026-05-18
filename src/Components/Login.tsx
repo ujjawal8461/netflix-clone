@@ -13,7 +13,8 @@ const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const [rememberMe, setRememberMe] = useState(true);
+  const { login, signup, loginAsGuest } = useAuth();
 
   useEffect(() => {
     if (location.state?.email) {
@@ -37,14 +38,8 @@ const Login: React.FC = () => {
   };
 
   const handleGuest = async () => {
-    try {
-      await login("guest@example.com");
-      navigate("/profiles");
-    } catch (err) {
-      // If guest doesn't exist, sign them up
-      await signup("guest@example.com");
-      navigate("/profiles");
-    }
+    loginAsGuest();
+    navigate("/profiles");
   };
 
   return (
@@ -111,10 +106,26 @@ const Login: React.FC = () => {
             )}
             
             <div className="flex items-center justify-between text-gray-400 text-sm">
-              <div className="flex items-center space-x-2">
-                <input type="checkbox" className="w-4 h-4" />
-                <span>Remember me</span>
-              </div>
+              <label className="flex items-center space-x-3 text-gray-400 text-sm cursor-pointer group">
+                <div className="relative">
+                  <input 
+                    type="checkbox" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${
+                    rememberMe 
+                      ? "bg-red-600 border-red-600 text-white" 
+                      : "bg-[#2b2b2b] border-[#444] text-transparent hover:border-[#666]"
+                  }`}>
+                    <svg className="w-3.5 h-3.5 stroke-current stroke-[3px]" fill="none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <span className="group-hover:text-white transition-colors">Remember me</span>
+              </label>
               <a href="#" className="hover:underline">Need help?</a>
             </div>
           </div>

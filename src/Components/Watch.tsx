@@ -8,12 +8,20 @@ import movieTrailer from "movie-trailer";
 import Row from "./Row";
 import Header from "./Header";
 import { Movie } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 const Watch: React.FC = () => {
   const { type, id } = useParams<{ type: string; id: string }>();
   const navigate = useNavigate();
+  const { user, profile, saveWatchProgress } = useAuth();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [trailerUrl, setTrailerUrl] = useState<string | null>("");
+
+  const watchHistory = (typeof profile === 'object' && profile !== null && 'watchHistory' in profile ? profile.watchHistory : user?.watchHistory) || [];
+  const savedProgress = watchHistory.find((item: any) => item.movieId.toString() === id);
+  const startSeconds = savedProgress && (savedProgress.timestamp / (savedProgress.duration || 1)) < 0.95 
+    ? savedProgress.timestamp 
+    : 0;
   
   // Custom Player State
   const [player, setPlayer] = useState<YouTubePlayer | null>(null);
@@ -97,19 +105,58 @@ const Watch: React.FC = () => {
     }
   }, [isPlaying, handleMouseMove]);
 
+  const currentTimeRef = useRef(0);
+  const durationRef = useRef(0);
+  const saveCounterRef = useRef(0);
+
+  const handleSaveProgress = useCallback(() => {
+    if (movie && durationRef.current > 0 && currentTimeRef.current > 0) {
+      saveWatchProgress({
+        movieId: movie.id,
+        title: movie.title || "",
+        name: movie.name || "",
+        posterPath: movie.poster_path || "",
+        timestamp: Math.round(currentTimeRef.current),
+        duration: Math.round(durationRef.current),
+        mediaType: type || "movie",
+        genres: movie.genres?.map((g: any) => g.id) || []
+      });
+    }
+  }, [movie, type, saveWatchProgress]);
+
+  // Save on unmount
+  useEffect(() => {
+    return () => {
+      handleSaveProgress();
+    };
+  }, [handleSaveProgress]);
+
   // Sync Progress
   useEffect(() => {
     let interval: any;
     if (player && isPlaying) {
       interval = setInterval(async () => {
-        const time = await player.getCurrentTime();
-        setCurrentTime(time);
-        const dur = await player.getDuration();
-        setDuration(dur);
+        try {
+          const time = await player.getCurrentTime();
+          setCurrentTime(time);
+          currentTimeRef.current = time;
+          const dur = await player.getDuration();
+          setDuration(dur);
+          durationRef.current = dur;
+
+          // Increment counter and save every 10 seconds
+          saveCounterRef.current += 1;
+          if (saveCounterRef.current >= 10) {
+            saveCounterRef.current = 0;
+            handleSaveProgress();
+          }
+        } catch (e) {
+          // ignore
+        }
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [player, isPlaying]);
+  }, [player, isPlaying, handleSaveProgress]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -135,6 +182,7 @@ const Watch: React.FC = () => {
     if (!player) return;
     if (isPlaying) {
       player.pauseVideo();
+      handleSaveProgress();
     } else {
       player.playVideo();
     }
@@ -197,6 +245,7 @@ const Watch: React.FC = () => {
       origin: window.location.origin,
       enablejsapi: 1,
       widget_referrer: window.location.origin,
+      start: startSeconds,
     },
     host: 'https://www.youtube-nocookie.com',
   };
@@ -218,6 +267,9 @@ const Watch: React.FC = () => {
               onReady={(e: any) => {
                 console.log("[DEBUG] Watch page player ready");
                 setPlayer(e.target);
+                if (startSeconds > 0) {
+                  e.target.seekTo(startSeconds, true);
+                }
               }}
               onPlay={() => {
                 console.log("[DEBUG] Watch page player playing");

@@ -10,17 +10,18 @@ import { useAuth } from "../context/AuthContext";
 const base_url = "https://image.tmdb.org/t/p/original/";
 
 const MyList: React.FC = () => {
-  const { user, updateMyList } = useAuth();
+  const { user, profile, updateMyList } = useAuth();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
   const [verifying, setVerifying] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user?.myList) {
-      setMovies(user.myList);
+    const list = (typeof profile === 'object' && profile !== null && 'myList' in profile) ? profile.myList : user?.myList;
+    if (list) {
+      setMovies(list);
     }
-  }, [user?.myList]);
+  }, [user?.myList, profile]);
 
   // Handle filtering and background verification automatically
   useEffect(() => {

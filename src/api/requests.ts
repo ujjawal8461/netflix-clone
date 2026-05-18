@@ -13,6 +13,10 @@ interface Requests {
   fetchMysteryMovies: string;
   fetchThrillerMovies: string;
   fetchHistoryMovies: string;
+  fetchFamilyMovies: string;
+  fetchKidsTv: string;
+  fetchAdventureMovies: string;
+  fetchFantasyMovies: string;
   fetchSearch: string;
   fetchRecommendations: (id: string | number) => string;
   fetchMovieDetails: (id: string | number) => string;
@@ -37,6 +41,10 @@ const requests: Requests = {
   fetchMysteryMovies: `/discover/movie?api_key=${API_KEY}&with_genres=9648`,
   fetchThrillerMovies: `/discover/movie?api_key=${API_KEY}&with_genres=53`,
   fetchHistoryMovies: `/discover/movie?api_key=${API_KEY}&with_genres=36,10752`,
+  fetchFamilyMovies: `/discover/movie?api_key=${API_KEY}&with_genres=10751`,
+  fetchKidsTv: `/discover/tv?api_key=${API_KEY}&with_genres=10762`,
+  fetchAdventureMovies: `/discover/movie?api_key=${API_KEY}&with_genres=12`,
+  fetchFantasyMovies: `/discover/movie?api_key=${API_KEY}&with_genres=14`,
   fetchSearch: `/search/multi?api_key=${API_KEY}&language=en-US&include_adult=false&query=`,
   fetchRecommendations: (id: string | number) => `/movie/${id}/recommendations?api_key=${API_KEY}&language=en-US`,
   fetchMovieDetails: (id: string | number) => `/movie/${id}?api_key=${API_KEY}&language=en-US&append_to_response=videos`,

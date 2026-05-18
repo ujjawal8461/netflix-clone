@@ -7,6 +7,7 @@ import Watch from "./Components/Watch";
 import Login from "./Components/Login";
 import Profiles from "./Components/Profiles";
 import MyList from "./Components/MyList";
+import WatchHistory from "./Components/WatchHistory";
 import Landing from "./Components/Landing";
 import CategoryPage from "./Components/CategoryPage";
 import Footer from "./Components/Footer";
@@ -24,27 +25,44 @@ const App: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, isGuest } = useAuth();
+  const isKidsProfile = typeof profile === 'object' && profile !== null && 'isKids' in profile && !!profile.isKids;
+
+  const watchHistory = (typeof profile === 'object' && profile !== null && 'watchHistory' in profile ? profile.watchHistory : user?.watchHistory) || [];
+  const continueWatchingMovies: Movie[] = watchHistory.map((item: any) => ({
+    id: item.movieId,
+    title: item.title,
+    name: item.name,
+    poster_path: item.posterPath,
+    backdrop_path: item.posterPath,
+    overview: "",
+    media_type: item.mediaType,
+    progress: (item.timestamp / (item.duration || 1)) * 100,
+    timestamp: item.timestamp,
+    duration: item.duration
+  })).reverse(); // Reverse so latest watched is first
 
   // Handle Search
   useEffect(() => {
-    if (searchQuery) {
-      async function fetchSearch() {
-        try {
-          setIsSearching(true);
-          const response = await axios.get(`${requests.fetchSearch}${searchQuery}`);
-          setSearchResults(response.data.results);
-        } catch (error) {
-          console.error("Search error:", error);
-        } finally {
-          setIsSearching(false);
-        }
-      }
-      fetchSearch();
-    } else {
+    if (!searchQuery) {
       setSearchResults([]);
       setIsSearching(false);
+      return;
     }
+
+    setIsSearching(true);
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const response = await axios.get(`${requests.fetchSearch}${searchQuery}`);
+        setSearchResults(response.data.results || []);
+      } catch (error) {
+        console.error("Search error:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
   const handleSearch = (query: string) => {
@@ -118,79 +136,128 @@ const App: React.FC = () => {
                     <div className="-mt-12 relative z-10">
                       <Row
                         Category_title="My List"
-                        moviesList={user?.myList || []}
+                        moviesList={(typeof profile === 'object' && profile !== null && 'myList' in profile ? profile.myList : user?.myList) || []}
                         isLargeRow
                       />
-                      <Row
-                        Category_title="NETFLIX ORIGINALS"
-                        fetchUrl={requests.fetchNetflixOriginals}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Trending Now"
-                        fetchUrl={requests.fetchTrending}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Top Rated"
-                        fetchUrl={requests.fetchTopRated}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Popular on Netflix"
-                        fetchUrl={requests.fetchPopular}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Action Movies"
-                        fetchUrl={requests.fetchActionMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Comedy Movies"
-                        fetchUrl={requests.fetchComedyMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Horror Movies"
-                        fetchUrl={requests.fetchHorrorMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Romance Movies"
-                        fetchUrl={requests.fetchRomanceMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Sci-Fi Movies"
-                        fetchUrl={requests.fetchSciFiMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Animation"
-                        fetchUrl={requests.fetchAnimationMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Mystery & Thriller"
-                        fetchUrl={requests.fetchMysteryMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Trending Thrillers"
-                        fetchUrl={requests.fetchThrillerMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="History & War"
-                        fetchUrl={requests.fetchHistoryMovies}
-                        isLargeRow
-                      />
-                      <Row
-                        Category_title="Documentaries"
-                        fetchUrl={requests.fetchDocumentaries}
-                        isLargeRow
-                      />
+                      {!isGuest && continueWatchingMovies.length > 0 && (
+                        <Row
+                          Category_title="Continue Watching"
+                          moviesList={continueWatchingMovies}
+                          isLargeRow
+                        />
+                      )}
+                      {isKidsProfile ? (
+                        <>
+                          <Row
+                            Category_title="Kids Television & Shows"
+                            fetchUrl={requests.fetchKidsTv}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Kids & Family Favorites"
+                            fetchUrl={requests.fetchFamilyMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Animated Cartoons"
+                            fetchUrl={requests.fetchAnimationMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Magical Fantasy & Animals"
+                            fetchUrl={requests.fetchFantasyMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Action & Adventure Fun"
+                            fetchUrl={requests.fetchAdventureMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Comedy Fun"
+                            fetchUrl={requests.fetchComedyMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Science & Nature Documentaries"
+                            fetchUrl={requests.fetchDocumentaries}
+                            isLargeRow
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Row
+                            Category_title="NETFLIX ORIGINALS"
+                            fetchUrl={requests.fetchNetflixOriginals}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Trending Now"
+                            fetchUrl={requests.fetchTrending}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Top Rated"
+                            fetchUrl={requests.fetchTopRated}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Popular on Netflix"
+                            fetchUrl={requests.fetchPopular}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Action Movies"
+                            fetchUrl={requests.fetchActionMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Comedy Movies"
+                            fetchUrl={requests.fetchComedyMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Horror Movies"
+                            fetchUrl={requests.fetchHorrorMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Romance Movies"
+                            fetchUrl={requests.fetchRomanceMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Sci-Fi Movies"
+                            fetchUrl={requests.fetchSciFiMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Animation"
+                            fetchUrl={requests.fetchAnimationMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Mystery & Thriller"
+                            fetchUrl={requests.fetchMysteryMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Trending Thrillers"
+                            fetchUrl={requests.fetchThrillerMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="History & War"
+                            fetchUrl={requests.fetchHistoryMovies}
+                            isLargeRow
+                          />
+                          <Row
+                            Category_title="Documentaries"
+                            fetchUrl={requests.fetchDocumentaries}
+                            isLargeRow
+                          />
+                        </>
+                      )}
                     </div>
                     <Footer />
                   </>
@@ -199,6 +266,7 @@ const App: React.FC = () => {
             } />
             <Route path="/watch/:type/:id" element={<Watch />} />
             <Route path="/mylist" element={<MyList />} />
+            <Route path="/history" element={<WatchHistory />} />
             <Route path="/tv" element={<CategoryPage type="tv" title="TV Shows" />} />
             <Route path="/movies" element={<CategoryPage type="movie" title="Movies" />} />
             <Route path="/profiles" element={<Profiles />} />
